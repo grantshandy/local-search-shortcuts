@@ -18,6 +18,8 @@ Then use the many search engine shortcuts like so:
 
 This immediately redirects to the Wikipedia page or search results.
 
+For a complete list of loaded shortcuts, search `!info`.
+
 ## Configuration File
 
 ```toml
