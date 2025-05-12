@@ -2,25 +2,29 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
     utils.url = "github:numtide/flake-utils";
-    rust = {
-      url = "github:oxalica/rust-overlay";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { nixpkgs, utils, rust, ... }:
+  outputs = { nixpkgs, utils, ... }:
     utils.lib.eachDefaultSystem (system:
       let
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [ (import rust) ];
-        };
+        pkgs = import nixpkgs { inherit system; };
       in
       {
         devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [ rust-bin.stable.latest.default cargo-watch ];
+          buildInputs = with pkgs; [ cargo cargo-watch ];
         };
 
         formatter = pkgs.nixpkgs-fmt;
       });
 }
+
+# package = pkgs.rustPlatform.buildRustPackage rec {
+#   pname = "lss";
+#   crateName = pname;
+#   version = "1.0.0";
+#   src = ./.;
+#   cargoLock = {
+#      lockFile = ./Cargo.lock;
+#      allowBuiltinFetchGit = true;
+#   };
+# };

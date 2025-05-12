@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, collections::HashMap, sync::LazyLock};
 
-use crate::{shared::SearchEngine, CONFIG};
+use crate::{config::CONFIG_CHECKS, shared::SearchEngine, CONFIG};
 
 pub static INFO: LazyLock<String> = LazyLock::new(|| {
     tracing::debug!("rendering info page");
@@ -9,24 +9,53 @@ pub static INFO: LazyLock<String> = LazyLock::new(|| {
 
 pub static INDEX: LazyLock<String> = LazyLock::new(|| {
     tracing::debug!("rendering main page");
+
+    let check_paths = CONFIG_CHECKS
+        .iter()
+        .map(|path| path.canonicalize().unwrap_or(path.clone()))
+        .map(|path| format!("<li><code>{path:?}</code></li>"))
+        .collect::<String>();
+
+    let active_config = CONFIG
+        .path
+        .as_ref()
+        .map(|path| {
+            path.canonicalize()
+                .unwrap_or(path.clone())
+                .to_string_lossy()
+                .to_string()
+        })
+        .unwrap_or("None detected".to_string());
+
+    let port = CONFIG.port;
+    let example = include_str!("../lss.toml");
+    let default = &CONFIG.default.name;
+
     base_html(&format!(
         r#"
-            <h2>Usage Instructions:</h2>
-            <p>Just set this as the search engine in your browser:</p>
-            <code>http://localhost:{}/?q=[TERMS]</code>
-            <p>Then use the many search engine shortcuts like so:</p>
-            <code>!wiki Hello World</code>
-            <p>This redirects to the Wikipedia page or search results.</p>
-            <p><i>(the placement of the shortcut is not important, and the first one found is always used)</i></p>
-            <hr>
-            <h2><a href="/info">List of Available Shortcuts</a></h2>
-            <p>Search <code>!info</code> to view this page at any time.</p>
-            <hr>
-            <h2>Configuration File</h2>
-            <pre>{}</pre>
-        "#,
-        CONFIG.port,
-        include_str!("../lss.toml"),
+        <p>
+            <a href="/info">List of Available Shortcuts</a>
+            -
+            <i>Search <code>!info</code> to view this page at any time.</i>
+        </p>
+        <hr>
+        <h2>Usage Instructions:</h2>
+        <p>Just set this as the search engine in your browser:</p>
+        <pre>http://localhost:{port}/?q=[TERMS]</pre>
+        <p>Then use the many search engine shortcuts like so:</p>
+        <pre>!wiki Hello World</pre>
+        <p>This redirects to the Wikipedia page or search results.</p>
+        <p><i>(the placement of the shortcut is not important, and the first one found is always used)</i></p>
+        <hr>
+        <h2>Configuration</h2>
+        <h4>Current</h4>
+        <p>Configuration File: <code>{active_config}</code></p>
+        <p>Default Search Engine: <code>{default}</code></p>
+        <h4>Example</h4>
+        <pre>{example}</pre>
+        <p>Configuration files are read in this order:</p>
+        <ul>{check_paths}</ul>
+    "#
     ))
 });
 
@@ -94,9 +123,12 @@ fn add_shortcut(subcategory: &mut Subcategory, shortcut: &str, engine: SearchEng
 fn render_categories(categories: Vec<(String, Category)>) -> String {
     let mut output = String::new();
 
-    output.push_str(r#"<p><i><a href="/">Back to Main Page</a></i></p>"#);
-    output.push_str("<h3>Categories</h3>");
-    output.push_str("<ol>");
+    output.push_str(r#"
+        <p><i><a href="/">Back to Main Page</a></i></p>
+        <hr>
+        <h3>Categories</h3>
+        <ol>
+    "#);
 
     for (category, subcategories) in categories.iter() {
         let category_id = category.replace(' ', "_");
@@ -142,29 +174,29 @@ fn render_categories(categories: Vec<(String, Category)>) -> String {
 }
 
 pub(crate) fn base_html(content: &str) -> String {
-    format!(
-        r#"
+    format!(r#"
         <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
             <title>Search Shortcuts</title>
             <style>
-                body {{ padding: 2em; background-color: #1e1e1e; color: #ffffff; }}
+                body {{ padding: 2em; background-color: #242424; color: #ffffff; }}
                 a {{ color: #3584e4; }}
+                pre {{ border: 1px solid #ffffff; padding: 0.5em; background: #1e1e1e; }}
             </style>
         </head>
         <body>
-            <h1>LSS - Local Search Shortcuts</h1>
+            <h1>Local Search Shortcuts</h1>
             <p>
-                &copy;2025 Grant Handy
-                &#124; <a href="https://github.com/grantshandy/lss">View Source</a>
-                &#124; <a href="https://buymeacoffee.com/granthandy">Donate</a>
+                <i>
+                    &copy;2025 Grant Handy
+                    &#124; <a href="https://github.com/grantshandy/lss">View Source</a>
+                    &#124; <a href="https://buymeacoffee.com/granthandy">Donate</a>
+                </i>
             </p>
-            <hr>
             {content}
         </body>
         </html>
-    "#
-    )
+    "#)
 }

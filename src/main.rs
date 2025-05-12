@@ -47,14 +47,10 @@ async fn main() -> Result<()> {
     let _ = LazyLock::force(&ENGINES);
     let _ = LazyLock::force(&CONFIG);
 
-    tracing::info!(
-        "launching service at http://{}:{}/",
-        CONFIG.emit_ip(),
-        CONFIG.port
-    );
+    tracing::info!("launching service at http://{}/", CONFIG.addr());
 
     axum::serve(
-        TcpListener::bind((CONFIG.emit_ip(), CONFIG.port)).await?,
+        TcpListener::bind(CONFIG.addr()).await?,
         Router::new()
             .route("/", routing::get(index))
             .route("/info", routing::get(|| async { Html(info::INFO.clone()) }))
