@@ -14,17 +14,17 @@
           buildInputs = with pkgs; [ cargo cargo-watch ];
         };
 
+        package = pkgs.rustPlatform.buildRustPackage rec {
+          pname = "lss";
+          crateName = pname;
+          version = "1.0.0";
+          src = ./.;
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+            allowBuiltinFetchGit = true;
+          };
+        };
+
         formatter = pkgs.nixpkgs-fmt;
       });
 }
-
-# package = pkgs.rustPlatform.buildRustPackage rec {
-#   pname = "lss";
-#   crateName = pname;
-#   version = "1.0.0";
-#   src = ./.;
-#   cargoLock = {
-#      lockFile = ./Cargo.lock;
-#      allowBuiltinFetchGit = true;
-#   };
-# };
