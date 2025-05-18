@@ -1,115 +1,92 @@
-use std::{collections::HashMap, sync::LazyLock};
+use std::{io::Cursor, sync::LazyLock, thread};
 
-use axum::{
-    extract::Query,
-    http::{header, HeaderValue, StatusCode},
-    response::{Html, IntoResponse, Response},
-    routing, Router,
-};
 use color_eyre::eyre::Result;
-use tokio::net::TcpListener;
+use tiny_http::{Header, Request, Response, Server, StatusCode};
 
 mod config;
 mod info;
 mod shared;
 
 use config::CONFIG;
-use shared::SearchEngine;
 
-static ENGINES: LazyLock<HashMap<String, SearchEngine>> = LazyLock::new(|| {
-    let mut internal: HashMap<String, SearchEngine> = bincode::decode_from_slice(
-        include_bytes!(concat!(env!("OUT_DIR"), "/generated.bin")),
+static ENGINES: LazyLock<shared::SearchEngineDatabase> = LazyLock::new(|| {
+    bincode::serde::decode_from_slice(
+        include_bytes!(env!("LSS_DATABASE")),
         bincode::config::standard(),
     )
     // should never happen
-    .expect("decode embedded resource")
-    .0;
-
-    internal.insert(
-        "info".to_string(),
-        SearchEngine {
-            name: "View This Page".to_string(),
-            category: None,
-            subcategory: None,
-            url: "/info".to_string(),
-        },
-    );
-
-    internal
+    .unwrap()
+    .0
 });
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     color_eyre::install()?;
     tracing_subscriber::fmt::init();
 
     // just for a fast first search, isn't necessary
     let _ = LazyLock::force(&ENGINES);
-    let _ = LazyLock::force(&CONFIG);
 
     tracing::info!("launching service at http://{}/", CONFIG.addr());
 
-    axum::serve(
-        TcpListener::bind(CONFIG.addr()).await?,
-        Router::new()
-            .route("/", routing::get(index))
-            .route("/info", routing::get(|| async { Html(info::INFO.clone()) }))
-            .fallback(routing::get(|| async {
-                (
-                    StatusCode::NOT_FOUND,
-                    Html(info::base_html("<h2>Error 404: Page Doesn't Exist</h2>")),
-                )
-                    .into_response()
-            })),
-    )
-    .await?;
+    let server = Server::http(CONFIG.addr()).map_err(|e| color_eyre::eyre::eyre!(e))?;
+
+    for request in server.incoming_requests() {
+        thread::spawn(move || {
+            let response = handle_request(&request);
+
+            if let Err(e) = request.respond(response) {
+                tracing::error!("error handling request: {e}");
+            }
+        });
+    }
 
     Ok(())
 }
 
-async fn index(Query(SearchQuery { q }): Query<SearchQuery>) -> Response {
-    match q {
-        None => Html(info::INDEX.clone()).into_response(),
-        Some(q) => (
-            StatusCode::FOUND,
-            [
-                (header::CONTENT_LENGTH, HeaderValue::from_static("0")),
-                (
-                    header::LOCATION,
-                    HeaderValue::from_str(&parse_terms(&q)).unwrap(),
-                ),
-                (
-                    header::CACHE_CONTROL,
-                    HeaderValue::from_static("no-cache, no-store, must-revalidate"),
-                ),
+fn handle_request(request: &Request) -> Response<Cursor<Vec<u8>>> {
+    if let Some(terms) = request.url().strip_prefix("/?q=") {
+        let redirect = parse_terms(terms);
+
+        return Response::new(
+            StatusCode(302),
+            vec![
+                Header::from_bytes("Location", redirect.as_bytes()).unwrap(),
+                Header::from_bytes("Cache-Control", "no-cache, no-store, must-revalidate").unwrap(),
             ],
-        )
-            .into_response(),
+            Cursor::new(Vec::with_capacity(0)),
+            Some(0),
+            None,
+        );
+    }
+
+    match request.url() {
+        "/" => html_resp(info::INDEX.clone(), 200),
+        "/info" => html_resp(info::INFO.clone(), 200),
+        _ => html_resp(
+            info::base_html("<h2>Error 404: Page Doesn't Exist</h2>"),
+            404,
+        ),
     }
 }
 
-#[derive(serde::Deserialize)]
-struct SearchQuery {
-    q: Option<String>,
-}
+fn parse_terms(encoded_terms: &str) -> String {
+    let terms = urlencoding::decode(encoded_terms)
+        .expect("url not encoded as utf8 (impossible)")
+        .replace('+', " ");
 
-fn parse_terms(terms: &str) -> String {
     let Some((shortcut, url)): Option<(&str, String)> = terms
         .split_whitespace()
         .find(|s| s.starts_with('!'))
         .and_then(|s| {
-            let trimmed = s.trim_start_matches('!').to_lowercase();
+            let trimmed = s.trim_start_matches('!');
 
             ENGINES
                 .get(&trimmed)
-                .or(CONFIG.engines.get(&trimmed))
-                .map(|e| (s, e.url.clone()))
+                .or(CONFIG.engines.get(trimmed))
+                .map(|e| (s, e.url.to_string()))
         })
     else {
-        return CONFIG
-            .default
-            .url
-            .replace("{s}", &urlencoding::encode(terms));
+        return CONFIG.default.url.replace("{s}", encoded_terms);
     };
 
     if url.contains("{s}") {
@@ -120,4 +97,10 @@ fn parse_terms(terms: &str) -> String {
     } else {
         url
     }
+}
+
+fn html_resp(html: String, code: u16) -> Response<Cursor<Vec<u8>>> {
+    let mut resp = Response::from_string(html).with_status_code(StatusCode(code));
+    resp.add_header(Header::from_bytes("Content-Type", "text/html").unwrap());
+    resp
 }

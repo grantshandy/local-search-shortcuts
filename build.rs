@@ -1,11 +1,11 @@
-use std::{collections::HashMap, env, fmt::Debug, fs};
+use std::{env, fs};
 
 #[path = "src/shared.rs"]
 mod shared;
 
-use shared::SearchEngine;
+use shared::{SearchEngine, SearchEngineDatabase};
 
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(serde::Deserialize)]
 struct ParsedEngine {
     #[serde(rename = "u")]
     url: String,
@@ -22,7 +22,9 @@ struct ParsedEngine {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let parsed: Vec<ParsedEngine> = serde_json::from_slice(&fs::read("bang.json")?)?;
 
-    let mut buf: HashMap<String, SearchEngine> = HashMap::new();
+    println!("cargo:rerun-if-changed=bang.json");
+
+    let mut db = SearchEngineDatabase::new();
 
     for parse in parsed {
         let url = parse
@@ -39,26 +41,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
 
-        buf.insert(
+        db.insert(
             parse.shortcut,
             SearchEngine {
-                name: parse.name,
-                category: parse.category,
-                subcategory: parse.subcategory,
-                url,
+                name: parse.name.into(),
+                category: parse.category.map(Into::into),
+                subcategory: parse.subcategory.map(Into::into),
+                url: url.into(),
             },
         );
     }
 
-    assert!(!buf.is_empty(), "No search engines found in bang.json");
+    assert!(db.count() != 0, "No search engines found in bang.json");
     assert!(
-        buf.contains_key(&shared::default_engine()),
+        db.get(&shared::default_engine()).is_some(),
         "Default engine not found in bang.json"
     );
 
+    let db_path = format!("{}/generated.bin", env::var("OUT_DIR")?);
+
+    println!("cargo::rustc-env=LSS_DATABASE={db_path}");
+
     fs::write(
-        format!("{}/generated.bin", env::var("OUT_DIR")?),
-        bincode::encode_to_vec(&buf, bincode::config::standard())?,
+        db_path,
+        bincode::serde::encode_to_vec(&db, bincode::config::standard())?,
     )?;
 
     Ok(())

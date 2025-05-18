@@ -1,15 +1,14 @@
 use std::{cmp::Ordering, collections::HashMap, sync::LazyLock};
 
+use compact_str::CompactString;
+
 use crate::{config::CONFIG_CHECKS, shared::SearchEngine, CONFIG};
 
 pub static INFO: LazyLock<String> = LazyLock::new(|| {
-    tracing::debug!("rendering info page");
     base_html(&render_categories(generate_categories()))
 });
 
 pub static INDEX: LazyLock<String> = LazyLock::new(|| {
-    tracing::debug!("rendering main page");
-
     let check_paths = CONFIG_CHECKS
         .iter()
         .map(|path| path.canonicalize().unwrap_or(path.clone()))
@@ -60,8 +59,8 @@ pub static INDEX: LazyLock<String> = LazyLock::new(|| {
 });
 
 struct EngineDescription {
-    name: String,
-    shortcuts: Vec<String>,
+    name: CompactString,
+    shortcuts: Vec<CompactString>,
 }
 
 type Subcategory = HashMap<String, EngineDescription>;
@@ -73,20 +72,22 @@ const CUSTOM: &str = "Custom";
 fn generate_categories() -> Vec<(String, Category)> {
     let mut categories: HashMap<String, Category> = HashMap::new();
 
-    for (shortcut, engine) in crate::ENGINES.iter() {
+    for (shortcut, i) in crate::ENGINES.shortcuts.iter() {
+        let engine = crate::ENGINES.engines.get_index(*i).unwrap();
+
         let subcategory = categories
-            .entry(engine.category.clone().unwrap_or(UNCATEGORIZED.to_string()))
+            .entry(engine.category.clone().unwrap_or(UNCATEGORIZED.into()).into())
             .or_default()
-            .entry(engine.subcategory.clone().unwrap_or("".to_string()))
+            .entry(engine.subcategory.clone().unwrap_or_default().into())
             .or_default();
 
-        add_shortcut(subcategory, shortcut, engine.clone());
+        add_shortcut(subcategory, shortcut, engine);
     }
 
     let mut custom: Subcategory = Subcategory::new();
 
     for (shortcut, engine) in crate::CONFIG.engines.iter() {
-        add_shortcut(&mut custom, shortcut, engine.clone());
+        add_shortcut(&mut custom, shortcut, engine);
     }
 
     categories
@@ -109,26 +110,28 @@ fn generate_categories() -> Vec<(String, Category)> {
     categories
 }
 
-fn add_shortcut(subcategory: &mut Subcategory, shortcut: &str, engine: SearchEngine) {
+fn add_shortcut(subcategory: &mut Subcategory, shortcut: &str, engine: &SearchEngine) {
     subcategory
         .entry(engine.url.replace("{s}", ""))
         .or_insert(EngineDescription {
-            name: engine.name,
+            name: engine.name.clone(),
             shortcuts: vec![],
         })
         .shortcuts
-        .push(format!("!{shortcut}"));
+        .push(format!("!{shortcut}").into());
 }
 
 fn render_categories(categories: Vec<(String, Category)>) -> String {
     let mut output = String::new();
 
-    output.push_str(r#"
+    output.push_str(
+        r#"
         <p><i><a href="/">Back to Main Page</a></i></p>
         <hr>
         <h3>Categories</h3>
         <ol>
-    "#);
+    "#,
+    );
 
     for (category, subcategories) in categories.iter() {
         let category_id = category.replace(' ', "_");
@@ -174,7 +177,8 @@ fn render_categories(categories: Vec<(String, Category)>) -> String {
 }
 
 pub(crate) fn base_html(content: &str) -> String {
-    format!(r#"
+    format!(
+        r#"
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -198,5 +202,6 @@ pub(crate) fn base_html(content: &str) -> String {
             {content}
         </body>
         </html>
-    "#)
+    "#
+    )
 }

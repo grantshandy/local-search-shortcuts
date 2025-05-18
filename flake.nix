@@ -4,27 +4,30 @@
     utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { nixpkgs, utils, ... }:
-    utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs { inherit system; };
-      in
-      {
-        devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [ cargo cargo-watch ];
-        };
+  outputs = {
+    nixpkgs,
+    utils,
+    ...
+  }:
+    utils.lib.eachDefaultSystem (system: let
+      pkgs = import nixpkgs {inherit system;};
+    in rec {
+      devShells.default = pkgs.mkShell {
+        buildInputs = with pkgs; [cargo cargo-watch rustfmt ];
+      };
 
-        package = pkgs.rustPlatform.buildRustPackage rec {
-          pname = "lss";
-          crateName = pname;
-          version = "1.0.0";
-          src = ./.;
-          cargoLock = {
-            lockFile = ./Cargo.lock;
-            allowBuiltinFetchGit = true;
-          };
+      packages.lss = pkgs.rustPlatform.buildRustPackage {
+        pname = "lss";
+        version = "1.1.0";
+        src = ./.;
+        cargoLock = {
+          lockFile = ./Cargo.lock;
+          allowBuiltinFetchGit = true;
         };
+      };
 
-        formatter = pkgs.nixpkgs-fmt;
-      });
+      defaultPackage = packages.lss;
+
+      formatter = pkgs.nixpkgs-fmt;
+    });
 }

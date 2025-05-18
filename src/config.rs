@@ -82,10 +82,10 @@ impl Config {
                 (
                     k.clone(),
                     SearchEngine {
-                        name: k,
-                        category: Some("Custom".to_string()),
+                        name: k.into(),
+                        category: Some("Custom".into()),
                         subcategory: None,
-                        url: v,
+                        url: v.into(),
                     },
                 )
             })
