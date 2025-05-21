@@ -1,19 +1,22 @@
-use std::{cmp::Ordering, collections::HashMap, sync::LazyLock};
+use std::{cmp::Ordering, collections::HashMap, fmt::Write, sync::LazyLock};
 
 use compact_str::CompactString;
 
-use crate::{config::CONFIG_CHECKS, shared::SearchEngine, CONFIG};
+use crate::{config::CONFIG_CHECKS, shared::SearchEngineRef, CONFIG};
 
-pub static INFO: LazyLock<String> = LazyLock::new(|| {
-    base_html(&render_categories(generate_categories()))
-});
+const EXAMPLE_CONFIG: &str = include_str!("../lss.toml");
+
+pub static INFO: LazyLock<String> =
+    LazyLock::new(|| base_html(&render_categories(generate_categories())));
 
 pub static INDEX: LazyLock<String> = LazyLock::new(|| {
     let check_paths = CONFIG_CHECKS
         .iter()
         .map(|path| path.canonicalize().unwrap_or(path.clone()))
-        .map(|path| format!("<li><code>{path:?}</code></li>"))
-        .collect::<String>();
+        .fold(String::new(), |mut output, path| {
+            let _ = write!(output, "<li><code>{path:?}</code></li>");
+            output
+        });
 
     let active_config = CONFIG
         .path
@@ -24,11 +27,10 @@ pub static INDEX: LazyLock<String> = LazyLock::new(|| {
                 .to_string_lossy()
                 .to_string()
         })
-        .unwrap_or("None detected".to_string());
+        .unwrap_or("None detected, using defaults".to_string());
 
     let port = CONFIG.port;
-    let example = include_str!("../lss.toml");
-    let default = &CONFIG.default.name;
+    let default = &CONFIG.default_engine.name;
 
     base_html(&format!(
         r#"
@@ -50,8 +52,7 @@ pub static INDEX: LazyLock<String> = LazyLock::new(|| {
         <h4>Current</h4>
         <p>Configuration File: <code>{active_config}</code></p>
         <p>Default Search Engine: <code>{default}</code></p>
-        <h4>Example</h4>
-        <pre>{example}</pre>
+        <pre>{EXAMPLE_CONFIG}</pre>
         <p>Configuration files are read in this order:</p>
         <ul>{check_paths}</ul>
     "#
@@ -60,7 +61,7 @@ pub static INDEX: LazyLock<String> = LazyLock::new(|| {
 
 struct EngineDescription {
     name: CompactString,
-    shortcuts: Vec<CompactString>,
+    shortcuts: String,
 }
 
 type Subcategory = HashMap<String, EngineDescription>;
@@ -72,31 +73,37 @@ const CUSTOM: &str = "Custom";
 fn generate_categories() -> Vec<(String, Category)> {
     let mut categories: HashMap<String, Category> = HashMap::new();
 
-    for (shortcut, i) in crate::ENGINES.shortcuts.iter() {
-        let engine = crate::ENGINES.engines.get_index(*i).unwrap();
+    for (shortcuts, engine) in crate::ENGINES.engines() {
+        let category_name = engine
+            .category
+            .map(|s| s.to_string())
+            .unwrap_or(UNCATEGORIZED.into());
 
-        let subcategory = categories
-            .entry(engine.category.clone().unwrap_or(UNCATEGORIZED.into()).into())
+        let subcategory_name = engine
+            .subcategory
+            .map(|s| s.to_string())
+            .unwrap_or_default();
+
+        let (url, description) = map_engine((shortcuts, engine));
+
+        categories
+            .entry(category_name)
             .or_default()
-            .entry(engine.subcategory.clone().unwrap_or_default().into())
-            .or_default();
-
-        add_shortcut(subcategory, shortcut, engine);
+            .entry(subcategory_name)
+            .or_default()
+            .insert(url, description);
     }
 
-    let mut custom: Subcategory = Subcategory::new();
-
-    for (shortcut, engine) in crate::CONFIG.engines.iter() {
-        add_shortcut(&mut custom, shortcut, engine);
-    }
+    let custom = crate::CONFIG.engines.engines().map(map_engine).collect();
 
     categories
         .entry(CUSTOM.to_string())
         .or_default()
-        .insert("".to_string(), custom);
+        .insert(String::new(), custom);
 
     let mut categories: Vec<(String, Category)> = categories.into_iter().collect();
 
+    // Sort by Custom -> Alphabetical -> Uncategorized
     categories.sort_by(|(a, _), (b, _)| {
         if a == UNCATEGORIZED {
             Ordering::Greater
@@ -110,15 +117,20 @@ fn generate_categories() -> Vec<(String, Category)> {
     categories
 }
 
-fn add_shortcut(subcategory: &mut Subcategory, shortcut: &str, engine: &SearchEngine) {
-    subcategory
-        .entry(engine.url.replace("{s}", ""))
-        .or_insert(EngineDescription {
+fn map_engine(
+    (shortcuts, engine): (Vec<&CompactString>, SearchEngineRef),
+) -> (String, EngineDescription) {
+    (
+        engine.url.replace("{s}", ""),
+        EngineDescription {
             name: engine.name.clone(),
-            shortcuts: vec![],
-        })
-        .shortcuts
-        .push(format!("!{shortcut}").into());
+            shortcuts: shortcuts
+                .into_iter()
+                .map(|s| format!("!{s}"))
+                .collect::<Vec<_>>()
+                .join(", "),
+        },
+    )
 }
 
 fn render_categories(categories: Vec<(String, Category)>) -> String {
@@ -133,17 +145,17 @@ fn render_categories(categories: Vec<(String, Category)>) -> String {
     "#,
     );
 
-    for (category, subcategories) in categories.iter() {
+    for (category, subcategories) in &categories {
         let category_id = category.replace(' ', "_");
-        output.push_str(&format!(
-            "<li><a href=\"#{category_id}\">{category}</a><ul>"
-        ));
+        write!(output, "<li><a href=\"#{category_id}\">{category}</a><ul>").unwrap();
 
         for (subcategory, _) in subcategories.iter().filter(|(s, _)| !s.is_empty()) {
-            let subcategory_id = format!("{category_id}_{}", subcategory.replace(' ', "_"));
-            output.push_str(&format!(
-                "<li><a href=\"#{subcategory_id}\">{subcategory}</a></li>"
-            ));
+            write!(
+                output,
+                "<li><a href=\"#{category_id}_{}\">{subcategory}</a></li>",
+                subcategory.replace(' ', "_")
+            )
+            .unwrap();
         }
 
         output.push_str("</ul></li>");
@@ -153,20 +165,21 @@ fn render_categories(categories: Vec<(String, Category)>) -> String {
 
     for (category, subcategories) in categories {
         let category_id = category.replace(' ', "_");
-        output.push_str(&format!("<hr><h3 id=\"{category_id}\">{category}</h3>"));
+        write!(output, "<hr><h3 id=\"{category_id}\">{category}</h3>").unwrap();
 
-        for (subcategory, engines) in subcategories.iter() {
+        for (subcategory, engines) in subcategories {
             let subcategory_id = format!("{category_id}_{}", subcategory.replace(' ', "_"));
-            output.push_str(&format!("<h4 id=\"{subcategory_id}\">{subcategory}</h4>"));
+            write!(output, "<h4 id=\"{subcategory_id}\">{subcategory}</h4>").unwrap();
 
             output.push_str("<ul>");
 
-            for (url, engine) in engines.iter() {
-                output.push_str(&format!(
+            for (url, engine) in engines {
+                write!(
+                    output,
                     "<li><a href=\"{url}\">{}</a>: {}</li>",
-                    engine.name,
-                    engine.shortcuts.join(", ")
-                ));
+                    engine.name, engine.shortcuts
+                )
+                .unwrap();
             }
 
             output.push_str("</ul>");

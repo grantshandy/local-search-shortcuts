@@ -1,6 +1,7 @@
+#![warn(clippy::pedantic)]
+
 use std::{io::Cursor, sync::LazyLock, thread};
 
-use color_eyre::eyre::Result;
 use tiny_http::{Header, Request, Response, Server, StatusCode};
 
 mod config;
@@ -19,8 +20,7 @@ static ENGINES: LazyLock<shared::SearchEngineDatabase> = LazyLock::new(|| {
     .0
 });
 
-fn main() -> Result<()> {
-    color_eyre::install()?;
+fn main() {
     tracing_subscriber::fmt::init();
 
     // just for a fast first search, isn't necessary
@@ -28,7 +28,13 @@ fn main() -> Result<()> {
 
     tracing::info!("launching service at http://{}/", CONFIG.addr());
 
-    let server = Server::http(CONFIG.addr()).map_err(|e| color_eyre::eyre::eyre!(e))?;
+    let server = match Server::http(CONFIG.addr()) {
+        Ok(server) => server,
+        Err(e) => {
+            tracing::error!("failed to start service: {e}");
+            return;
+        }
+    };
 
     for request in server.incoming_requests() {
         thread::spawn(move || {
@@ -39,8 +45,6 @@ fn main() -> Result<()> {
             }
         });
     }
-
-    Ok(())
 }
 
 fn handle_request(request: &Request) -> Response<Cursor<Vec<u8>>> {
@@ -81,12 +85,12 @@ fn parse_terms(encoded_terms: &str) -> String {
             let trimmed = s.trim_start_matches('!');
 
             ENGINES
-                .get(&trimmed)
+                .get(trimmed)
                 .or(CONFIG.engines.get(trimmed))
                 .map(|e| (s, e.url.to_string()))
         })
     else {
-        return CONFIG.default.url.replace("{s}", encoded_terms);
+        return CONFIG.default_engine.url.replace("{s}", encoded_terms);
     };
 
     if url.contains("{s}") {

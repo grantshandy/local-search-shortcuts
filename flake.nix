@@ -13,12 +13,12 @@
       pkgs = import nixpkgs {inherit system;};
     in rec {
       devShells.default = pkgs.mkShell {
-        buildInputs = with pkgs; [cargo cargo-watch rustfmt ];
+        buildInputs = with pkgs; [cargo cargo-watch rustfmt clippy ];
       };
 
       packages.lss = pkgs.rustPlatform.buildRustPackage {
         pname = "lss";
-        version = "1.1.0";
+        version = "1.2.0";
         src = ./.;
         cargoLock = {
           lockFile = ./Cargo.lock;

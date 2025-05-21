@@ -3,20 +3,21 @@ use std::{env, fs};
 #[path = "src/shared.rs"]
 mod shared;
 
-use shared::{SearchEngine, SearchEngineDatabase};
+use compact_str::CompactString;
+use shared::{InternalSearchEngine, SearchEngineDatabase};
 
 #[derive(serde::Deserialize)]
 struct ParsedEngine {
     #[serde(rename = "u")]
-    url: String,
+    url: CompactString,
     #[serde(rename = "s")]
-    name: String,
+    name: CompactString,
     #[serde(rename = "t")]
-    shortcut: String,
+    shortcut: CompactString,
     #[serde(rename = "c")]
-    category: Option<String>,
+    category: Option<CompactString>,
     #[serde(rename = "sc")]
-    subcategory: Option<String>,
+    subcategory: Option<CompactString>,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -42,19 +43,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         db.insert(
-            parse.shortcut,
-            SearchEngine {
-                name: parse.name.into(),
-                category: parse.category.map(Into::into),
-                subcategory: parse.subcategory.map(Into::into),
+            &parse.shortcut,
+            InternalSearchEngine {
+                name: parse.name,
                 url: url.into(),
+                category: parse.category,
+                subcategory: parse.subcategory,
             },
         );
     }
 
     assert!(db.count() != 0, "No search engines found in bang.json");
     assert!(
-        db.get(&shared::default_engine()).is_some(),
+        db.get(&shared::default::engine()).is_some(),
         "Default engine not found in bang.json"
     );
 

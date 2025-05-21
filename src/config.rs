@@ -6,7 +6,9 @@ use std::{
     sync::LazyLock,
 };
 
-use crate::shared::{default_engine, SearchEngine};
+use compact_str::CompactString;
+
+use crate::shared::{default, InternalSearchEngine, SearchEngineDatabase};
 
 pub static CONFIG_CHECKS: LazyLock<Vec<PathBuf>> = LazyLock::new(|| {
     dirs::config_dir()
@@ -19,8 +21,7 @@ pub static CONFIG_CHECKS: LazyLock<Vec<PathBuf>> = LazyLock::new(|| {
 pub static CONFIG: LazyLock<Config> = LazyLock::new(|| {
     let config = CONFIG_CHECKS
         .iter()
-        .filter_map(Config::from_file)
-        .next()
+        .find_map(Config::from_file)
         .unwrap_or_default();
 
     if let Some(ref path) = config.path {
@@ -37,20 +38,20 @@ pub static CONFIG: LazyLock<Config> = LazyLock::new(|| {
 #[derive(Debug)]
 pub struct Config {
     pub port: u16,
-    pub default: SearchEngine,
+    pub default_engine: OwnedSearchEngine,
     pub broadcast: bool,
-    pub engines: HashMap<String, SearchEngine>,
+    pub engines: SearchEngineDatabase,
     pub path: Option<PathBuf>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config {
-            port: default_port(),
+            port: default::port(),
             broadcast: false,
-            // unwrap: it's asserted that default_engine() is in the engines map in build.rs
-            default: crate::ENGINES.get(&default_engine()).unwrap().clone(),
-            engines: HashMap::new(),
+            // unwrap: asserted in build.rs that default engine is present
+            default_engine: force_clone(&crate::ENGINES.get(&default::engine()).unwrap()),
+            engines: SearchEngineDatabase::new(),
             path: None,
         }
     }
@@ -68,45 +69,49 @@ impl Config {
     }
 
     fn from_file(path: &PathBuf) -> Option<Self> {
-        let file = fs::read(path)
-            .ok()
-            .and_then(|bytes| String::from_utf8(bytes).ok())
-            .and_then(|s| toml::from_str::<ConfigFile>(&s).ok())?;
+        let file = match String::from_utf8(fs::read(path).ok()?)
+            .map_err(|e| e.to_string())
+            .and_then(|t| toml::from_str::<ConfigFile>(&t).map_err(|e| e.to_string()))
+        {
+            Ok(text) => text,
+            Err(err) => {
+                tracing::warn!("failed to parse config file {path:?}: {err}");
+                return None;
+            }
+        };
 
         let path = path.canonicalize().unwrap_or(path.clone());
 
-        let engines: HashMap<String, SearchEngine> = file
-            .engines
-            .into_iter()
-            .map(|(k, v)| {
-                (
-                    k.clone(),
-                    SearchEngine {
-                        name: k.into(),
-                        category: Some("Custom".into()),
-                        subcategory: None,
-                        url: v.into(),
-                    },
-                )
-            })
-            .collect();
+        let mut engines = SearchEngineDatabase::new();
 
-        let default = engines
+        for (name, url) in file.engines {
+            engines.insert(
+                &name.clone().into(),
+                InternalSearchEngine {
+                    name: name.into(),
+                    url: url.into(),
+                    category: Some("Custom".into()),
+                    subcategory: None,
+                },
+            );
+        }
+
+        let default_engine = engines
             .get(&file.default)
             .or(crate::ENGINES.get(&file.default))
             .unwrap_or_else(|| {
                 tracing::warn!(
                     "config's default engine '{}' not found, using {}",
                     file.default,
-                    default_engine()
+                    default::engine()
                 );
-                crate::ENGINES.get(&default_engine()).unwrap()
-            })
-            .clone();
+                // unwrap: asserted in build.rs that default engine is present
+                crate::ENGINES.get(&default::engine()).unwrap()
+            });
 
         Some(Self {
             port: file.port,
-            default,
+            default_engine: force_clone(&default_engine),
             broadcast: file.broadcast,
             engines,
             path: Some(path),
@@ -114,11 +119,11 @@ impl Config {
     }
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 struct ConfigFile {
-    #[serde(default = "default_port")]
+    #[serde(default = "default::port")]
     port: u16,
-    #[serde(default = "default_engine")]
+    #[serde(default = "default::engine")]
     default: String,
     #[serde(default)]
     broadcast: bool,
@@ -126,6 +131,15 @@ struct ConfigFile {
     engines: HashMap<String, String>,
 }
 
-fn default_port() -> u16 {
-    9321
+pub type OwnedSearchEngine = InternalSearchEngine<CompactString, Option<CompactString>>;
+
+fn force_clone(
+    engine: &InternalSearchEngine<&'_ CompactString, Option<&'_ CompactString>>,
+) -> OwnedSearchEngine {
+    OwnedSearchEngine {
+        name: engine.name.clone(),
+        url: engine.url.clone(),
+        category: engine.category.cloned(),
+        subcategory: engine.subcategory.cloned(),
+    }
 }
