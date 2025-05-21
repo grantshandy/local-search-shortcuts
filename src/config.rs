@@ -8,7 +8,7 @@ use std::{
 
 use compact_str::CompactString;
 
-use crate::shared::{default, InternalSearchEngine, SearchEngineDatabase};
+use crate::engines::{default, InternalSearchEngine, SearchEngineDatabase};
 
 pub static CONFIG_CHECKS: LazyLock<Vec<PathBuf>> = LazyLock::new(|| {
     dirs::config_dir()

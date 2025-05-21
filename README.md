@@ -1,10 +1,10 @@
 # Local Search Shortcuts
 
-A local proxy service for redirecting to duckduckgo's [bangs](https://duckduckgo.com/bangs) feature in any search engine.
+*Access more than 12,000 search engines with any browser or default search engine with a <3MB runtime memory background process.*
 
-All pre-loaded shortcuts are generated from [`bang.js`](https://duckduckgo.com/bang.js).
+A local proxy service for redirecting to duckduckgo's [bangs](https://duckduckgo.com/bangs) feature in any search engine. All pre-loaded shortcuts are generated from [`bang.js`](https://duckduckgo.com/bang.js).
 
-## Usage Instructions:
+## Instructions:
 
 After running, just set this as the search engine in your browser:
 ```
@@ -13,10 +13,10 @@ http://localhost:9321/?q=[TERMS]
 
 Then use the many search engine shortcuts like so:
 ```
-!wiki Hello World
+!w Hello World
 ```
 
-This immediately redirects to the Wikipedia page or search results.
+This immediately (~15μs) redirects to the Wikipedia page or search results.
 
 For a complete list of loaded shortcuts, search `!info`.
 

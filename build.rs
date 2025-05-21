@@ -1,6 +1,6 @@
 use std::{env, fs};
 
-#[path = "src/shared.rs"]
+#[path = "src/engines.rs"]
 mod shared;
 
 use compact_str::CompactString;

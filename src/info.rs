@@ -2,7 +2,7 @@ use std::{cmp::Ordering, collections::HashMap, fmt::Write, sync::LazyLock};
 
 use compact_str::CompactString;
 
-use crate::{config::CONFIG_CHECKS, shared::SearchEngineRef, CONFIG};
+use crate::{config::CONFIG_CHECKS, engines::SearchEngineRef, CONFIG};
 
 const EXAMPLE_CONFIG: &str = include_str!("../lss.toml");
 
@@ -40,7 +40,7 @@ pub static INDEX: LazyLock<String> = LazyLock::new(|| {
             <i>Search <code>!info</code> to view this page at any time.</i>
         </p>
         <hr>
-        <h2>Usage Instructions:</h2>
+        <h2>Instructions:</h2>
         <p>Just set this as the search engine in your browser:</p>
         <pre>http://localhost:{port}/?q=[TERMS]</pre>
         <p>Then use the many search engine shortcuts like so:</p>
@@ -120,15 +120,19 @@ fn generate_categories() -> Vec<(String, Category)> {
 fn map_engine(
     (shortcuts, engine): (Vec<&CompactString>, SearchEngineRef),
 ) -> (String, EngineDescription) {
+    let shortcuts = shortcuts.into_iter().fold(String::new(), |mut acc, s| {
+        if !acc.is_empty() {
+            acc.push_str(", ");
+        }
+        let _ = write!(acc, "!{s}");
+        acc
+    });
+
     (
         engine.url.replace("{s}", ""),
         EngineDescription {
             name: engine.name.clone(),
-            shortcuts: shortcuts
-                .into_iter()
-                .map(|s| format!("!{s}"))
-                .collect::<Vec<_>>()
-                .join(", "),
+            shortcuts,
         },
     )
 }

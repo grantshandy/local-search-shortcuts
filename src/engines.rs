@@ -25,7 +25,6 @@ pub struct SearchEngineDatabase {
 }
 
 impl SearchEngineDatabase {
-    #[allow(dead_code)]
     pub fn new() -> Self {
         let mut me = Self {
             shortcuts: HashMap::new(),
@@ -34,6 +33,8 @@ impl SearchEngineDatabase {
         };
 
         me.categories.insert(CompactString::default());
+
+        // index '0' represents a null value in the database.
         assert!(me
             .categories
             .get_index(0)
@@ -52,7 +53,6 @@ impl SearchEngineDatabase {
         me
     }
 
-    #[allow(dead_code)]
     pub fn insert(
         &mut self,
         shortcut: &CompactString,
@@ -115,7 +115,6 @@ impl SearchEngineDatabase {
         }
     }
 
-    #[allow(dead_code)]
     pub fn count(&self) -> usize {
         self.engines.len()
     }
