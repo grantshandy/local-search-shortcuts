@@ -16,17 +16,17 @@
         buildInputs = with pkgs; [cargo cargo-watch rustfmt clippy ];
       };
 
-      packages.lss = pkgs.rustPlatform.buildRustPackage {
-        pname = "lss";
-        version = "1.2.1";
-        src = ./.;
-        cargoLock = {
-          lockFile = ./Cargo.lock;
-          allowBuiltinFetchGit = true;
-        };
-      };
+      # packages.lss = pkgs.rustPlatform.buildRustPackage {
+      #   pname = "lss";
+      #   version = "1.2.1";
+      #   src = ./.;
+      #   cargoLock = {
+      #     lockFile = ./Cargo.lock;
+      #     allowBuiltinFetchGit = true;
+      #   };
+      # };
 
-      defaultPackage = packages.lss;
+      # defaultPackage = packages.lss;
 
       formatter = pkgs.nixpkgs-fmt;
     });

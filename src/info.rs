@@ -208,7 +208,7 @@ pub(crate) fn base_html(content: &str) -> String {
             </style>
         </head>
         <body>
-            <h1>Local Search Shortcuts</h1>
+            <h1>Local Search Shortcuts v{}</h1>
             <p>
                 <i>
                     &copy;2025 Grant Handy
@@ -219,6 +219,7 @@ pub(crate) fn base_html(content: &str) -> String {
             {content}
         </body>
         </html>
-    "#
+    "#,
+    env!("CARGO_PKG_VERSION")
     )
 }

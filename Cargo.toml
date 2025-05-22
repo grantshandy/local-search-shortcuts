@@ -1,6 +1,6 @@
 [package]
-name = "lss"
-version = "1.2.1"
+name = "local-search-shortcuts"
+version = "1.2.2"
 edition = "2021"
 
 [profile.release]
