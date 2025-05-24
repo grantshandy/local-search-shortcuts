@@ -34,3 +34,22 @@ homemanager = "https://home-manager-options.extranix.com/?query={s}"
 # if "{s}" is not present, it will always just redirect regardless of the search terms
 # now you can search for "!homemanager vim"
 ```
+
+## Nix home-manager configuration
+
+Just drop [`local-search-shortcuts.nix`](./local-search-shortcuts.nix) into your configuration and use like so:
+
+```nix
+imports = [ ./local-search-shortcuts.nix ];
+
+services.local-search-shortcuts = {
+    enable = true;
+    firefoxSearch = true;
+    settings = {
+        default = "duckduckgo";
+        engines.homemanager = "https://home-manager-options.extranix.com/?query={s}";
+    };
+};
+```
+
+And it will automatically set itself as your default firefox search engine and start when you log in!
