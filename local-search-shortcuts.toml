@@ -6,3 +6,4 @@ default = "duckduckgo" # the default search engine (duckduckgo, google, bing, et
 homemanager = "https://home-manager-options.extranix.com/?query={s}"
 # if "{s}" is not present, it will always just redirect regardless of the search terms
 # now you can search for "!homemanager vim"
+asdf = "https://example.com"

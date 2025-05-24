@@ -1,10 +1,11 @@
 use std::{io::Cursor, sync::LazyLock, thread};
 
+use compact_str::CompactString;
 use tiny_http::{Header, Request, Response, Server, StatusCode};
 
 mod config;
-mod info;
 mod engines;
+mod info;
 
 use config::CONFIG;
 
@@ -25,7 +26,10 @@ fn main() {
     let _ = LazyLock::force(&ENGINES);
     let _ = LazyLock::force(&CONFIG);
 
-    tracing::info!("loaded {} search engines", ENGINES.count() + CONFIG.engines.count());
+    tracing::info!(
+        "loaded {} search engines",
+        ENGINES.count() + CONFIG.engines.count()
+    );
     tracing::info!("launching service at http://{}/", CONFIG.addr());
 
     let server = match Server::http(CONFIG.addr()) {
@@ -63,14 +67,15 @@ fn handle_request(request: &Request) -> Response<Cursor<Vec<u8>>> {
         );
     }
 
-    match request.url() {
-        "/" => html_resp(info::INDEX.as_bytes(), 200),
-        "/info" => html_resp(info::INFO.as_bytes(), 200),
-        _ => html_resp(
-            info::base_html("<h2>Error 404: Page Doesn't Exist</h2>").as_bytes(),
-            404,
-        ),
-    }
+    let (data, code) = match request.url() {
+        "/" => (info::INDEX.as_bytes(), 200),
+        "/info" => (info::INFO.as_bytes(), 200),
+        _ => (info::NOT_FOUND.as_bytes(), 404),
+    };
+
+    Response::from_data(data)
+        .with_status_code(StatusCode(code))
+        .with_header(Header::from_bytes("Content-Type", "text/html").unwrap())
 }
 
 fn parse_terms(encoded_terms: &str) -> String {
@@ -78,7 +83,7 @@ fn parse_terms(encoded_terms: &str) -> String {
         .expect("url not encoded as utf8 (impossible)")
         .replace('+', " ");
 
-    let Some((shortcut, url)): Option<(&str, String)> = terms
+    let Some((shortcut, url)): Option<(&str, &CompactString)> = terms
         .split_whitespace()
         .find(|s| s.starts_with('!'))
         .and_then(|s| {
@@ -87,24 +92,18 @@ fn parse_terms(encoded_terms: &str) -> String {
             ENGINES
                 .get(trimmed)
                 .or(CONFIG.engines.get(trimmed))
-                .map(|e| (s, e.url.to_string()))
+                .map(|e| (s, e.url))
         })
     else {
         return CONFIG.default_engine.url.replace("{s}", encoded_terms);
     };
 
-    if url.contains("{s}") {
-        url.replace(
-            "{s}",
-            &urlencoding::encode(terms.replace(shortcut, "").trim()),
-        )
-    } else {
-        url
+    if !url.contains("{s}") {
+        return url.to_string();
     }
-}
 
-fn html_resp(data: &[u8], code: u16) -> Response<Cursor<Vec<u8>>> {
-    let mut resp = Response::from_data(data).with_status_code(StatusCode(code));
-    resp.add_header(Header::from_bytes("Content-Type", "text/html").unwrap());
-    resp
+    url.replace(
+        "{s}",
+        urlencoding::encode(terms.replace(shortcut, "").trim()).as_ref(),
+    )
 }

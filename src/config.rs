@@ -8,13 +8,13 @@ use std::{
 
 use compact_str::CompactString;
 
-use crate::engines::{default, InternalSearchEngine, SearchEngineDatabase};
+use crate::engines::{default, InternalSearchEngine, SearchEngineDatabase, SearchEngineRef};
 
 pub static CONFIG_CHECKS: LazyLock<Vec<PathBuf>> = LazyLock::new(|| {
     dirs::config_dir()
         .into_iter()
-        .map(|dir| dir.join("lss/config.toml"))
-        .chain(iter::once("lss.toml".into()))
+        .map(|dir| dir.join("local-search-shortcuts/config.toml"))
+        .chain(iter::once("local-search-shortcuts.toml".into()))
         .collect()
 });
 
@@ -119,7 +119,7 @@ impl Config {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize)]
 struct ConfigFile {
     #[serde(default = "default::port")]
     port: u16,
@@ -131,11 +131,9 @@ struct ConfigFile {
     engines: HashMap<String, String>,
 }
 
-pub type OwnedSearchEngine = InternalSearchEngine<CompactString, Option<CompactString>>;
+type OwnedSearchEngine = InternalSearchEngine<CompactString, Option<CompactString>>;
 
-fn force_clone(
-    engine: &InternalSearchEngine<&'_ CompactString, Option<&'_ CompactString>>,
-) -> OwnedSearchEngine {
+fn force_clone(engine: &SearchEngineRef) -> OwnedSearchEngine {
     OwnedSearchEngine {
         name: engine.name.clone(),
         url: engine.url.clone(),

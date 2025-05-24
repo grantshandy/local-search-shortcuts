@@ -4,10 +4,7 @@ use compact_str::CompactString;
 
 use crate::{config::CONFIG_CHECKS, engines::SearchEngineRef, CONFIG};
 
-const EXAMPLE_CONFIG: &str = include_str!("../lss.toml");
-
-pub static INFO: LazyLock<String> =
-    LazyLock::new(|| base_html(&render_categories(generate_categories())));
+const EXAMPLE_CONFIG: &str = include_str!("../local-search-shortcuts.toml");
 
 pub static INDEX: LazyLock<String> = LazyLock::new(|| {
     let check_paths = CONFIG_CHECKS
@@ -27,10 +24,13 @@ pub static INDEX: LazyLock<String> = LazyLock::new(|| {
                 .to_string_lossy()
                 .to_string()
         })
-        .unwrap_or("None detected, using defaults".to_string());
+        .map(|path| format!("<code>{path}</code>"))
+        .unwrap_or("<b>None detected, using defaults</b>".into());
 
     let port = CONFIG.port;
-    let default = &CONFIG.default_engine.name;
+
+    let default_name = &CONFIG.default_engine.name;
+    let default_url = &CONFIG.default_engine.url.replace("{s}", "");
 
     base_html(&format!(
         r#"
@@ -44,20 +44,28 @@ pub static INDEX: LazyLock<String> = LazyLock::new(|| {
         <p>Just set this as the search engine in your browser:</p>
         <pre>http://localhost:{port}/?q=[TERMS]</pre>
         <p>Then use the many search engine shortcuts like so:</p>
-        <pre>!wiki Hello World</pre>
-        <p>This redirects to the Wikipedia page or search results.</p>
+        <pre>!w Hello World</pre>
+        <p>This redirects to the relevant Wikipedia page or search results.</p>
         <p><i>(the placement of the shortcut is not important, and the first one found is always used)</i></p>
         <hr>
         <h2>Configuration</h2>
-        <h4>Current</h4>
-        <p>Configuration File: <code>{active_config}</code></p>
-        <p>Default Search Engine: <code>{default}</code></p>
+        <h3>Current Configuration</h3>
+        <p>Configuration File: {active_config}</p>
+        <p>Default Search Engine: <a href={default_url}>{default_name}</a></p>
+        <h3>Configuration Options</h3>
+        <p>Here's an example configuration file:</p>
         <pre>{EXAMPLE_CONFIG}</pre>
         <p>Configuration files are read in this order:</p>
         <ul>{check_paths}</ul>
     "#
     ))
 });
+
+pub static NOT_FOUND: LazyLock<String> =
+    LazyLock::new(|| base_html("<h2>Error 404: Page Doesn't Exist</h2>"));
+
+pub static INFO: LazyLock<String> =
+    LazyLock::new(|| base_html(&render_categories(generate_categories())));
 
 struct EngineDescription {
     name: CompactString,
@@ -144,6 +152,7 @@ fn render_categories(categories: Vec<(String, Category)>) -> String {
         r#"
         <p><i><a href="/">Back to Main Page</a></i></p>
         <hr>
+        <div style="text-align: left;">
         <h3>Categories</h3>
         <ol>
     "#,
@@ -165,15 +174,15 @@ fn render_categories(categories: Vec<(String, Category)>) -> String {
         output.push_str("</ul></li>");
     }
 
-    output.push_str("</ol>");
+    output.push_str(r#"</ol>"#);
 
     for (category, subcategories) in categories {
         let category_id = category.replace(' ', "_");
-        write!(output, "<hr><h3 id=\"{category_id}\">{category}</h3>").unwrap();
+        write!(output, "<hr><h2 id=\"{category_id}\">{category}</h3>").unwrap();
 
         for (subcategory, engines) in subcategories {
             let subcategory_id = format!("{category_id}_{}", subcategory.replace(' ', "_"));
-            write!(output, "<h4 id=\"{subcategory_id}\">{subcategory}</h4>").unwrap();
+            write!(output, "<h3 id=\"{subcategory_id}\">{subcategory}</h4>").unwrap();
 
             output.push_str("<ul>");
 
@@ -190,6 +199,8 @@ fn render_categories(categories: Vec<(String, Category)>) -> String {
         }
     }
 
+    output.push_str("</div>");
+
     output
 }
 
@@ -200,11 +211,42 @@ pub(crate) fn base_html(content: &str) -> String {
         <html lang="en">
         <head>
             <meta charset="UTF-8">
-            <title>Search Shortcuts</title>
+            <title>Local Search Shortcuts</title>
             <style>
-                body {{ padding: 2em; background-color: #242424; color: #ffffff; }}
-                a {{ color: #3584e4; }}
-                pre {{ border: 1px solid #ffffff; padding: 0.5em; background: #1e1e1e; }}
+                body {{ 
+                    font-family: Arial, sans-serif; 
+                    margin: 0 auto; 
+                    max-width: 800px; 
+                    padding: 2em; 
+                    background-color: #f9f9f9; 
+                    color: #333333; 
+                    text-align: center; 
+                }}
+                a {{ 
+                    color: #007acc; 
+                    text-decoration: none; 
+                }}
+                a:hover {{ 
+                    text-decoration: underline; 
+                }}
+                pre,code {{ 
+                    border: 1px solid #dddddd; 
+                    background: #f4f4f4;
+                    padding: 0.5em;
+                }}
+                pre {{
+                    padding: 1em;
+                    text-align: left; 
+                    overflow-x: auto; 
+                }}
+                ul, ol {{ 
+                    text-align: left; 
+                    margin: 1em 0 1em 2em; 
+                    padding: 0; 
+                }}
+                li {{ 
+                    margin: 0.5em 0; 
+                }}
             </style>
         </head>
         <body>
@@ -220,6 +262,6 @@ pub(crate) fn base_html(content: &str) -> String {
         </body>
         </html>
     "#,
-    env!("CARGO_PKG_VERSION")
+        env!("CARGO_PKG_VERSION")
     )
 }

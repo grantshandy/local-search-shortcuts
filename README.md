@@ -23,11 +23,11 @@ For a complete list of loaded shortcuts, search `!info`.
 ## Configuration File
 
 ```toml
-# Located at <CONFIG DIRECTORY>/lss/config.toml or ./lss.toml
+# Located at <CONFIG DIRECTORY>/local-search-shortcuts/config.toml or ./local-search-shortcuts.toml
 
 port = 9321 # host on this port
 broadcast = false # make accessible to other devices on the network
-default = "duckduckgo" # the default search engine (duckduckgo, google, bing, etc.)
+default = "DuckDuckGo" # the default search engine (duckduckgo, google, bing, etc.)
 
 [engines]
 homemanager = "https://home-manager-options.extranix.com/?query={s}"
