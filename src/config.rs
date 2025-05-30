@@ -11,10 +11,12 @@ use compact_str::CompactString;
 use crate::engines::{default, InternalSearchEngine, SearchEngineDatabase, SearchEngineRef};
 
 pub static CONFIG_CHECKS: LazyLock<Vec<PathBuf>> = LazyLock::new(|| {
-    dirs::config_dir()
-        .into_iter()
-        .map(|dir| dir.join("local-search-shortcuts/config.toml"))
-        .chain(iter::once("local-search-shortcuts.toml".into()))
+    iter::once("local-search-shortcuts.toml".into())
+        .chain(
+            dirs::config_dir()
+                .into_iter()
+                .map(|dir| dir.join("local-search-shortcuts/config.toml")),
+        )
         .collect()
 });
 

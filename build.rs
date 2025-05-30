@@ -6,6 +6,8 @@ mod shared;
 use compact_str::CompactString;
 use shared::{InternalSearchEngine, SearchEngineDatabase};
 
+const BANG_PATH: &str = "res/bang.json";
+
 #[derive(serde::Deserialize)]
 struct ParsedEngine {
     #[serde(rename = "u")]
@@ -21,9 +23,9 @@ struct ParsedEngine {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let parsed: Vec<ParsedEngine> = serde_json::from_slice(&fs::read("bang.json")?)?;
+    let parsed: Vec<ParsedEngine> = serde_json::from_slice(&fs::read(BANG_PATH)?)?;
 
-    println!("cargo:rerun-if-changed=bang.json");
+    println!("cargo:rerun-if-changed={BANG_PATH}");
 
     let mut db = SearchEngineDatabase::new();
 

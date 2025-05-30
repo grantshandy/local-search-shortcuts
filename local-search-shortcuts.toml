@@ -1,4 +1,4 @@
-port = 9321 # host on this port
+port = 9320 # host on this port
 broadcast = false # make accessible to other devices on the network
 default = "duckduckgo" # the default search engine (duckduckgo, google, bing, etc.)
 

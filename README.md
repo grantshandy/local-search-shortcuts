@@ -37,7 +37,7 @@ homemanager = "https://home-manager-options.extranix.com/?query={s}"
 
 ## Nix home-manager configuration
 
-Just drop [`local-search-shortcuts.nix`](./local-search-shortcuts.nix) into your configuration and use like so:
+Just drop [`local-search-shortcuts.nix`](./res/local-search-shortcuts.nix) into your configuration and use like so:
 
 ```nix
 imports = [ ./local-search-shortcuts.nix ];
@@ -53,3 +53,6 @@ services.local-search-shortcuts = {
 ```
 
 And it will automatically set itself as your default firefox search engine and start when you log in!
+
+Before: 2000
+
