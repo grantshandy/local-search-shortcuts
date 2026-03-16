@@ -57,7 +57,10 @@ pub static INDEX: LazyLock<String> = LazyLock::new(|| {
         <pre>{EXAMPLE_CONFIG}</pre>
         <p>Configuration files are read in this order:</p>
         <ul>{check_paths}</ul>
-    "#
+        <hr>
+        <p><i>Default engines retrieved from DuckDuckGo on {}</i></p>
+    "#,
+        include_str!(env!("LSS_LAST_UPDATED"))
     ))
 });
 

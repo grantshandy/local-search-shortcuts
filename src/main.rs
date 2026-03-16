@@ -82,8 +82,8 @@ fn parse_terms(encoded_terms: &str) -> String {
             let trimmed = s.trim_start_matches('!');
 
             ENGINES
-                .get(trimmed)
-                .or(CONFIG.engines.get(trimmed))
+                .get_engine(trimmed)
+                .or(CONFIG.engines.get_engine(trimmed))
                 .map(|e| (s, e.url))
         })
     else {

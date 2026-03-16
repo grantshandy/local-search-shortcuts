@@ -79,7 +79,7 @@ impl SearchEngineDatabase {
         }
     }
 
-    pub fn get<'a>(&'a self, shortcut: &str) -> Option<SearchEngineRef<'a>> {
+    pub fn get_engine<'a>(&'a self, shortcut: &str) -> Option<SearchEngineRef<'a>> {
         self.shortcuts
             .get(shortcut.to_lowercase().as_str())
             .and_then(|idx| self.engines.get_index(*idx))
@@ -122,7 +122,7 @@ impl SearchEngineDatabase {
 }
 
 impl ArchivedSearchEngineDatabase {
-    pub fn get<'a>(&'a self, shortcut: &str) -> Option<SearchEngineRef<'a>> {
+    pub fn get_engine<'a>(&'a self, shortcut: &str) -> Option<SearchEngineRef<'a>> {
         self.shortcuts
             .get(shortcut.to_lowercase().as_str())
             .and_then(|idx| self.engines.get_index((*idx).to_native() as usize))

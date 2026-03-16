@@ -50,7 +50,7 @@ impl Default for Config {
             port: default::port(),
             broadcast: false,
             // unwrap: asserted in build.rs that default engine is present
-            default_engine: force_clone(&crate::ENGINES.get(&default::engine()).unwrap()),
+            default_engine: force_clone(&crate::ENGINES.get_engine(&default::engine()).unwrap()),
             engines: SearchEngineDatabase::default(),
             path: None,
         }
@@ -97,8 +97,8 @@ impl Config {
         }
 
         let default_engine = engines
-            .get(&file.default)
-            .or(crate::ENGINES.get(&file.default))
+            .get_engine(&file.default)
+            .or(crate::ENGINES.get_engine(&file.default))
             .unwrap_or_else(|| {
                 tracing::warn!(
                     "config's default engine '{}' not found, using {}",
@@ -106,7 +106,7 @@ impl Config {
                     default::engine()
                 );
                 // unwrap: asserted in build.rs that default engine is present
-                crate::ENGINES.get(&default::engine()).unwrap()
+                crate::ENGINES.get_engine(&default::engine()).unwrap()
             });
 
         Some(Self {
