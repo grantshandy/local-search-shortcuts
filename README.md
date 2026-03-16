@@ -37,7 +37,7 @@ homemanager = "https://home-manager-options.extranix.com/?query={s}"
 
 ## Nix home-manager configuration
 
-Just drop [`local-search-shortcuts.nix`](./local-search-shortcuts.nix) into your configuration and use like so:
+Just drop [`local-search-shortcuts.nix`](./res/local-search-shortcuts.nix) into your configuration and use like so:
 
 ```nix
 imports = [ ./local-search-shortcuts.nix ];
@@ -45,10 +45,8 @@ imports = [ ./local-search-shortcuts.nix ];
 services.local-search-shortcuts = {
     enable = true;
     firefoxSearch = true;
-    settings = {
-        default = "duckduckgo";
-        engines.homemanager = "https://home-manager-options.extranix.com/?query={s}";
-    };
+    default = "duckduckgo";
+    engines.homemanager = "https://home-manager-options.extranix.com/?query={s}";
 };
 ```
 
