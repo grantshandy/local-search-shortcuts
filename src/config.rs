@@ -6,7 +6,7 @@ use std::{
     sync::LazyLock,
 };
 
-use compact_str::CompactString;
+use compact_str::{CompactString, ToCompactString};
 
 use crate::engines::{default, InternalSearchEngine, SearchEngineDatabase, SearchEngineRef};
 
@@ -51,7 +51,7 @@ impl Default for Config {
             broadcast: false,
             // unwrap: asserted in build.rs that default engine is present
             default_engine: force_clone(&crate::ENGINES.get(&default::engine()).unwrap()),
-            engines: SearchEngineDatabase::new(),
+            engines: SearchEngineDatabase::default(),
             path: None,
         }
     }
@@ -82,7 +82,7 @@ impl Config {
 
         let path = path.canonicalize().unwrap_or(path.clone());
 
-        let mut engines = SearchEngineDatabase::new();
+        let mut engines = SearchEngineDatabase::default();
 
         for (name, url) in file.engines {
             engines.insert(
@@ -135,9 +135,9 @@ type OwnedSearchEngine = InternalSearchEngine<CompactString, Option<CompactStrin
 
 fn force_clone(engine: &SearchEngineRef) -> OwnedSearchEngine {
     OwnedSearchEngine {
-        name: engine.name.clone(),
-        url: engine.url.clone(),
-        category: engine.category.cloned(),
-        subcategory: engine.subcategory.cloned(),
+        name: engine.name.to_compact_string(),
+        url: engine.url.to_compact_string(),
+        category: engine.category.map(|s| s.to_compact_string()),
+        subcategory: engine.subcategory.map(|s| s.to_compact_string()),
     }
 }

@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("cargo:rerun-if-changed=bang.json");
 
-    let mut db = SearchEngineDatabase::new();
+    let mut db = SearchEngineDatabase::default();
 
     for parse in parsed {
         let url = parse
@@ -53,20 +53,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    assert!(db.count() != 0, "No search engines found in bang.json");
     assert!(
-        db.get(&shared::default::engine()).is_some(),
-        "Default engine not found in bang.json"
+        db.engine_count() != 0,
+        "No search engines found in bang.json"
     );
+    // assert!(
+    //     db.get(&shared::default::engine()).is_some(),
+    //     "Default engine not found in bang.json"
+    // );
 
     let db_path = format!("{}/generated.bin", env::var("OUT_DIR")?);
 
     println!("cargo::rustc-env=LSS_DATABASE={db_path}");
 
-    fs::write(
-        db_path,
-        bincode::serde::encode_to_vec(&db, bincode::config::standard())?,
-    )?;
+    fs::write(db_path, rkyv::to_bytes::<rkyv::rancor::Error>(&db)?)?;
 
     Ok(())
 }

@@ -9,6 +9,8 @@ in
     buildInputs = with pkgs; [
       cargo
       cargo-watch
+      cargo-expand
+      cargo-bloat
       rustfmt
       clippy
       update-res

@@ -1,6 +1,5 @@
 use std::{io::Cursor, sync::LazyLock, thread};
 
-use compact_str::CompactString;
 use tiny_http::{Header, Request, Response, Server, StatusCode};
 
 mod config;
@@ -9,15 +8,8 @@ mod info;
 
 use config::CONFIG;
 
-static ENGINES: LazyLock<engines::SearchEngineDatabase> = LazyLock::new(|| {
-    bincode::serde::decode_from_slice(
-        include_bytes!(env!("LSS_DATABASE")),
-        bincode::config::standard(),
-    )
-    // should never happen
-    .unwrap()
-    .0
-});
+static ENGINES: LazyLock<&engines::ArchivedSearchEngineDatabase> =
+    LazyLock::new(|| unsafe { rkyv::access_unchecked(&include_bytes!(env!("LSS_DATABASE"))[..]) });
 
 fn main() {
     tracing_subscriber::fmt::init();
@@ -28,7 +20,7 @@ fn main() {
 
     tracing::info!(
         "loaded {} search engines",
-        ENGINES.count() + CONFIG.engines.count()
+        ENGINES.engine_count() + CONFIG.engines.engine_count()
     );
     tracing::info!("launching service at http://{}/", CONFIG.addr());
 
@@ -83,7 +75,7 @@ fn parse_terms(encoded_terms: &str) -> String {
         .expect("url not encoded as utf8 (impossible)")
         .replace('+', " ");
 
-    let Some((shortcut, url)): Option<(&str, &CompactString)> = terms
+    let Some((shortcut, url)): Option<(&str, &str)> = terms
         .split_whitespace()
         .find(|s| s.starts_with('!'))
         .and_then(|s| {

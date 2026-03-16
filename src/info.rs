@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, collections::HashMap, fmt::Write, sync::LazyLock};
 
-use compact_str::CompactString;
+use compact_str::{CompactString, ToCompactString};
 
 use crate::{config::CONFIG_CHECKS, engines::SearchEngineRef, CONFIG};
 
@@ -125,9 +125,7 @@ fn generate_categories() -> Vec<(String, Category)> {
     categories
 }
 
-fn map_engine(
-    (shortcuts, engine): (Vec<&CompactString>, SearchEngineRef),
-) -> (String, EngineDescription) {
+fn map_engine((shortcuts, engine): (Vec<&str>, SearchEngineRef)) -> (String, EngineDescription) {
     let shortcuts = shortcuts.into_iter().fold(String::new(), |mut acc, s| {
         if !acc.is_empty() {
             acc.push_str(", ");
@@ -139,7 +137,7 @@ fn map_engine(
     (
         engine.url.replace("{s}", ""),
         EngineDescription {
-            name: engine.name.clone(),
+            name: engine.name.to_compact_string(),
             shortcuts,
         },
     )
@@ -253,7 +251,7 @@ pub(crate) fn base_html(content: &str) -> String {
             <h1>Local Search Shortcuts v{}</h1>
             <p>
                 <i>
-                    &copy;2025 Grant Handy
+                    &copy;2026 Grant Handy
                     &#124; <a href="https://github.com/grantshandy/local-search-shortcuts">View Source</a>
                     &#124; <a href="https://buymeacoffee.com/granthandy">Donate</a>
                 </i>
