@@ -213,39 +213,39 @@ pub(crate) fn base_html(content: &str) -> String {
             <meta charset="UTF-8">
             <title>Local Search Shortcuts</title>
             <style>
-                body {{ 
-                    font-family: Arial, sans-serif; 
-                    margin: 0 auto; 
-                    max-width: 800px; 
-                    padding: 2em; 
-                    background-color: #f9f9f9; 
-                    color: #333333; 
-                    text-align: center; 
+                body {{
+                    font-family: Arial, sans-serif;
+                    margin: 0 auto;
+                    max-width: 800px;
+                    padding: 2em;
+                    background-color: #f9f9f9;
+                    color: #333333;
+                    text-align: center;
                 }}
-                a {{ 
-                    color: #007acc; 
-                    text-decoration: none; 
+                a {{
+                    color: #007acc;
+                    text-decoration: none;
                 }}
-                a:hover {{ 
-                    text-decoration: underline; 
+                a:hover {{
+                    text-decoration: underline;
                 }}
-                pre,code {{ 
-                    border: 1px solid #dddddd; 
+                pre,code {{
+                    border: 1px solid #dddddd;
                     background: #f4f4f4;
                     padding: 0.5em;
                 }}
                 pre {{
                     padding: 1em;
-                    text-align: left; 
-                    overflow-x: auto; 
+                    text-align: left;
+                    overflow-x: auto;
                 }}
-                ul, ol {{ 
-                    text-align: left; 
-                    margin: 1em 0 1em 2em; 
-                    padding: 0; 
+                ul, ol {{
+                    text-align: left;
+                    margin: 1em 0 1em 2em;
+                    padding: 0;
                 }}
-                li {{ 
-                    margin: 0.5em 0; 
+                li {{
+                    margin: 0.5em 0;
                 }}
             </style>
         </head>
@@ -254,7 +254,7 @@ pub(crate) fn base_html(content: &str) -> String {
             <p>
                 <i>
                     &copy;2025 Grant Handy
-                    &#124; <a href="https://github.com/grantshandy/lss">View Source</a>
+                    &#124; <a href="https://github.com/grantshandy/local-search-shortcuts">View Source</a>
                     &#124; <a href="https://buymeacoffee.com/granthandy">Donate</a>
                 </i>
             </p>

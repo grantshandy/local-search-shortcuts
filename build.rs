@@ -21,7 +21,7 @@ struct ParsedEngine {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let parsed: Vec<ParsedEngine> = serde_json::from_slice(&fs::read("bang.json")?)?;
+    let parsed: Vec<ParsedEngine> = serde_json::from_slice(&fs::read("res/bang.json")?)?;
 
     println!("cargo:rerun-if-changed=bang.json");
 
