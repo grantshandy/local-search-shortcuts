@@ -1,6 +1,6 @@
 # Local Search Shortcuts
 
-*Access more than 12,000 search engines with any browser or default search engine with a <3MB runtime memory background process.*
+*Access more than 12,000 search engines with any browser or default search engine with a <1MB runtime memory background process.*
 
 A local proxy service for redirecting to duckduckgo's [bangs](https://duckduckgo.com/bangs) feature in any search engine. All pre-loaded shortcuts are generated from [`bang.js`](https://duckduckgo.com/bang.js).
 
